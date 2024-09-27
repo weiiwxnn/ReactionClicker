@@ -1,6 +1,7 @@
 import pyautogui
 from time import sleep
-from PIL import ImageGrab
+import mss
+import numpy as np
 
 def is_green(pixel_color):
     # Adjust the threshold for green detection
@@ -8,43 +9,40 @@ def is_green(pixel_color):
     # Checking if green is dominant and red/blue are significantly lower
     return g > 120 and r < 100 and b < 100
 
-def find_green_area(x1, y1, x2, y2):
-    # Capture a screenshot of the specified area
-    screen = ImageGrab.grab(bbox=(x1, y1, x2, y2))
-    width, height = screen.size
-    print(f"Checking area: ({x1},{y1}) to ({x2},{y2})")
+def find_green_area(x, y):
+    with mss.mss() as sct:
+        # Define the area to capture (1x1 pixel area)
+        monitor = {"top": y, "left": x, "width": 1, "height": 1}
+        screenshot = sct.grab(monitor)
+        
+        # Convert the pixel to RGB
+        pixel = np.array(screenshot.pixel(0, 0))
+        r, g, b = pixel[2], pixel[1], pixel[0]  # BGR to RGB
+        
+        # print(f"Pixel at (0, 0): ({r}, {g}, {b})")  # Print for debugging
+        
+        # Check if the pixel is green
+        if is_green((r, g, b)):
+            print("Green detected!")
+            return True
+        print("Green not detected.")
+        return False
 
-    for x in range(width):
-        for y in range(height):
-            # Get the color of the pixel
-            pixel = screen.getpixel((x, y))
-            print(f"Pixel at ({x}, {y}): {pixel}")  # Print the pixel color for debugging
-            if is_green(pixel):
-                print("Green detected!")
-                return True  # Found green
-    print("Green not detected.")
-    return False
-
-def click_if_green(x, y, width, height):
+def click_if_green(x, y):
     while True:
         # Continuously capture the specified area until green is detected
-        if find_green_area(x, y, x + width, y + height):
+        if find_green_area(x, y):
             # Click the center of the area once it turns green
-            pyautogui.click(x + width // 2, y + height // 2)
+            pyautogui.click(x, y)
             print("Clicked the green area!")
             break
-        else:
-            print("No green detected, retrying...")
-        # sleep(0.01)  # Short sleep to make it more responsive (adjust if needed)
+        # Removing sleep for maximum speed
 
 if __name__ == "__main__":
     # Coordinates of the red/green area on your screen
-    # Adjust these values to the location of the red/green box
     x = 800  # Top-left x-coordinate
     y = 500  # Top-left y-coordinate
-    width = 1  # Width of the area (small 10x10 area as you mentioned)
-    height = 1  # Height of the area
 
     print("Waiting for the color to turn green...")
-    click_if_green(x, y, width, height)
+    click_if_green(x, y)
     print("Finished.")
